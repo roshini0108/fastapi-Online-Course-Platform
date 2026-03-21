@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from pydantic import BaseModel, Field
 app = FastAPI()
 courses=[
     {"id":1,"title":"Full Stack Web Development","instructor":"John Doe","category":"Web Dev","level":"Beginner","price":99,"seats_left":20},
@@ -11,6 +12,13 @@ courses=[
 
 enrollments = []
 enrollment_counter = 1
+
+class EnrollRequest(BaseModel):
+    student_name: str = Field(..., min_length=2)
+    course_id: int = Field(..., gt=0)
+    email: str = Field(..., min_length=5)
+    payment_method: str = "card"
+    coupon_code: str = ""
 
 @app.get("/")
 def home():
@@ -33,6 +41,26 @@ def get_course_summary():
   "total_seats": sum(course["seats_left"] for course in courses),
   "category_count": {category: len([course for course in courses if course["category"] == category]) for category in set(course["category"] for course in courses)}
 }
+
+@app.post("/test-enroll")
+def test_enroll(data: EnrollRequest):
+    return {"message": "ok"}
+
+def find_course(course_id):
+    for course in courses:
+        if course["id"] == course_id:
+            return course
+    return None
+
+def calculate_enrollment_fee(price, seats_left, coupon_code):
+    fprice = price  
+    if seats_left > 5:
+        fprice = fprice * 0.9
+    if coupon_code == "STUDENT20":
+        fprice = fprice * 0.8
+    elif coupon_code == "FLAT500":
+        fprice = fprice - 500
+    return fprice
 
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
