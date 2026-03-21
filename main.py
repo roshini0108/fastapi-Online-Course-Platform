@@ -8,6 +8,10 @@ courses=[
     {"id":5,"title":"Docker & Kubernetes Basics","instructor":"Charlie Brown","category":"DevOps","level":"Beginner","price":99,"seats_left":25},
     {"id":6,"title":"Linux for DevOps Engineers","instructor":"David Davis","category":"DevOps","level":"Advanced","price":299,"seats_left":20}
 ]
+
+enrollments = []
+enrollment_counter = 1
+
 @app.get("/")
 def home():
     return {"message": "Welcome to LearnHub Online Courses"}
@@ -15,6 +19,12 @@ def home():
 @app.get("/courses")
 def get_courses():
     return {"courses": courses, "total": len(courses), "total_seats_available": sum(course["seats_left"] for course in courses)}
+
+@app.get("/enrollments")
+def get_enrollments():
+    return {"enrollments": enrollments, "total": len(enrollments)}
+
+
 
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
