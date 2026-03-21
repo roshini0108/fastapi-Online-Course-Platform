@@ -15,3 +15,10 @@ def home():
 @app.get("/courses")
 def get_courses():
     return {"courses": courses, "total": len(courses), "total_seats_available": sum(course["seats_left"] for course in courses)}
+
+@app.get("/courses/{course_id}")
+def get_course(course_id: int):
+    for course in courses:
+        if course["id"] == course_id:   
+            return {"course": course}
+    return {"error": "Course not found"}
