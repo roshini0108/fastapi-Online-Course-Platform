@@ -24,7 +24,15 @@ def get_courses():
 def get_enrollments():
     return {"enrollments": enrollments, "total": len(enrollments)}
 
-
+@app.get("/courses/summary")
+def get_course_summary():
+    return {
+  "total_courses": len(courses),
+  "free_courses": len([course for course in courses if course["price"] == 0]),
+  "most_expensive_course": max(courses, key=lambda x: x["price"]) if courses else None,
+  "total_seats": sum(course["seats_left"] for course in courses),
+  "category_count": {category: len([course for course in courses if course["category"] == category]) for category in set(course["category"] for course in courses)}
+}
 
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
