@@ -136,6 +136,29 @@ def add_course(course: NewCourse):
     courses.append(new_course)
     return {"message": "Course added successfully", "course": new_course}
 
+@app.put("/courses/{course_id}")
+def update_course(
+    course_id: int,
+    price: int = Query(None),
+    seats_left: int = Query(None)
+):
+    for c in courses:
+        if c["id"] == course_id:
+
+            # Update only provided fields
+            if price is not None:
+                c["price"] = price
+
+            if seats_left is not None:
+                c["seats_left"] = seats_left
+
+            return {
+                "message": "Course updated successfully",
+                "course": c
+            }
+
+    raise HTTPException(status_code=404, detail="Course not found")
+
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
     for course in courses:
