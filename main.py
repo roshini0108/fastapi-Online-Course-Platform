@@ -327,6 +327,55 @@ def paginate_courses(
         "total_courses": total_courses,
         "courses": paginated
     }
+@app.get("/enrollments/search")
+def search_enrollments(keyword: str):
+
+    keyword = keyword.lower()
+
+    results = [
+        e for e in enrollments
+        if keyword in e["student_name"].lower()
+    ]
+
+    return {
+        "results": results,
+        "total_found": len(results)
+    }
+
+@app.get("/enrollments/sort")
+def sort_enrollments(order: str = "asc"):
+
+    if order not in ["asc", "desc"]:
+        raise HTTPException(status_code=400, detail="Invalid order")
+
+    reverse = True if order == "desc" else False
+
+    sorted_data = sorted(enrollments, key=lambda x: x["final_fee"], reverse=reverse)
+
+    return {
+        "sorted_enrollments": sorted_data,
+        "order": order
+    }
+
+import math
+
+@app.get("/enrollments/page")
+def paginate_enrollments(page: int = 1, limit: int = 3):
+
+    total = len(enrollments)
+    total_pages = math.ceil(total / limit)
+
+    start = (page - 1) * limit
+    end = start + limit
+
+    data = enrollments[start:end]
+
+    return {
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_enrollments": total,
+        "enrollments": data
+    }
 
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
