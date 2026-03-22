@@ -1,6 +1,9 @@
+from unicodedata import category
+
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from fastapi import HTTPException
+from fastapi import Query
 app = FastAPI()
 courses=[
     {"id":1,"title":"Full Stack Web Development","instructor":"John Doe","category":"Web Dev","level":"Beginner","price":99,"seats_left":20},
@@ -94,6 +97,27 @@ def enroll(data: EnrollRequest):
     enrollments.append(record)
     enrollment_counter += 1 
     return {"message": "Enrollment successful", "enrollment": record}
+
+@app.get("/courses/filter")
+def filter_courses(
+    category: str = Query(None, description="Filter by course category"),
+    level: str = Query(None, description="Filter by course level"),
+    max_price: float = Query(None, description="Maximum price"),
+    has_seats: bool = Query(None, description="Filter by seat availability")
+):
+    filtered_courses = courses
+    if category is not None:
+        filtered_courses = [course for course in filtered_courses if course["category"].lower() == category.lower()]
+    if level is not None:
+        filtered_courses = [course for course in filtered_courses if course["level"].lower() == level.lower()]
+    if max_price is not None:
+        filtered_courses = [course for course in filtered_courses if course["price"] <= max_price]
+    if has_seats is not None:
+        if has_seats:
+            filtered_courses = [course for course in filtered_courses if course["seats_left"] > 0]
+        else:
+            filtered_courses = [course for course in filtered_courses if course["seats_left"] == 0]
+    return {"filtered_courses": filtered_courses, "total": len(filtered_courses)}
 
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
