@@ -278,6 +278,56 @@ def search_courses(keyword: str = Query(...)):
         "total_found": len(results)
     }
 
+from fastapi import Query, HTTPException
+
+@app.get("/courses/sort")
+def sort_courses(
+    sort_by: str = Query("price"),
+    order: str = Query("asc")
+):
+
+    valid_fields = ["price", "title", "seats_left"]
+
+    if sort_by not in valid_fields:
+        raise HTTPException(status_code=400, detail="Invalid sort field")
+
+    if order not in ["asc", "desc"]:
+        raise HTTPException(status_code=400, detail="Invalid order")
+
+    reverse = True if order == "desc" else False
+
+    sorted_courses = sorted(courses, key=lambda x: x[sort_by], reverse=reverse)
+
+    return {
+        "sorted_courses": sorted_courses,
+        "sort_by": sort_by,
+        "order": order
+    }
+
+from fastapi import Query
+import math
+
+@app.get("/courses/page")
+def paginate_courses(
+    page: int = Query(1, gt=0),
+    limit: int = Query(3, gt=0)
+):
+    total_courses = len(courses)
+
+    total_pages = math.ceil(total_courses / limit)
+
+    start = (page - 1) * limit
+    end = start + limit
+
+    paginated = courses[start:end]
+
+    return {
+        "current_page": page,
+        "total_pages": total_pages,
+        "total_courses": total_courses,
+        "courses": paginated
+    }
+
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
     for course in courses:
