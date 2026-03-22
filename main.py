@@ -155,40 +155,6 @@ def add_course(course: NewCourse):
     courses.append(new_course)
     return {"message": "Course added successfully", "course": new_course}
 
-#Q12 - Update course details with partial updates allowed
-@app.put("/courses/{course_id}")
-def update_course(
-    course_id: int,
-    price: int = Query(None),
-    seats_left: int = Query(None)
-):
-    for c in courses:
-        if c["id"] == course_id:
-            if price is not None:
-                c["price"] = price
-            if seats_left is not None:
-                c["seats_left"] = seats_left
-            return {
-                "message": "Course updated successfully",
-                "course": c
-            }
-    raise HTTPException(status_code=404, detail="Course not found")
-
-#Q13 - Delete a course with enrollment check
-@app.delete("/courses/{course_id}")
-def delete_course(course_id: int):
-    for c in courses:
-        if c["id"] == course_id:
-            for e in enrollments:
-                if e["course_title"] == c["title"]:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Cannot delete course with active enrollments"
-                    )
-            courses.remove(c)
-            return {"message": "Course deleted successfully"}
-    raise HTTPException(status_code=404, detail="Course not found")
-
 #Q14 - Wishlist management with add, view, enroll and remove functionality
 @app.post("/wishlist/add")
 def add_to_wishlist(student_name: str, course_id: int):
@@ -259,14 +225,6 @@ def enroll_all(data: WishlistEnrollRequest):
         "total_fee": total_fee,
         "enrollments": enrolled
     }
-
-@app.delete("/wishlist/remove/{course_id}")
-def remove_from_wishlist(course_id: int, student_name: str):
-    for item in wishlist:
-        if item["course_id"] == course_id and item["student_name"] == student_name:
-            wishlist.remove(item)
-            return {"message": "Course removed from wishlist"}
-    raise HTTPException(status_code=404, detail="Item not found in wishlist")
 
 #Q16 - Search courses by keyword in title, instructor or category
 @app.get("/courses/search")
@@ -405,6 +363,49 @@ def browse_courses(
         "current_page": page,
         "courses": paginated
     }
+
+#Q12 - Update course details with partial updates allowed
+@app.put("/courses/{course_id}")
+def update_course(
+    course_id: int,
+    price: int = Query(None),
+    seats_left: int = Query(None)
+):
+    for c in courses:
+        if c["id"] == course_id:
+            if price is not None:
+                c["price"] = price
+            if seats_left is not None:
+                c["seats_left"] = seats_left
+            return {
+                "message": "Course updated successfully",
+                "course": c
+            }
+    raise HTTPException(status_code=404, detail="Course not found")
+
+#Q13 - Delete a course with enrollment check
+@app.delete("/courses/{course_id}")
+def delete_course(course_id: int):
+    for c in courses:
+        if c["id"] == course_id:
+            for e in enrollments:
+                if e["course_title"] == c["title"]:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Cannot delete course with active enrollments"
+                    )
+            courses.remove(c)
+            return {"message": "Course deleted successfully"}
+    raise HTTPException(status_code=404, detail="Course not found")
+
+#Q15- delete a course from wishlist after enrolling in it
+@app.delete("/wishlist/remove/{course_id}")
+def remove_from_wishlist(course_id: int, student_name: str):
+    for item in wishlist:
+        if item["course_id"] == course_id and item["student_name"] == student_name:
+            wishlist.remove(item)
+            return {"message": "Course removed from wishlist"}
+    raise HTTPException(status_code=404, detail="Item not found in wishlist")
 
 #Q3 - Get course details by ID with error handling
 @app.get("/courses/{course_id}")
