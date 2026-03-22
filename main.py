@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+from fastapi import HTTPException
 app = FastAPI()
 courses=[
     {"id":1,"title":"Full Stack Web Development","instructor":"John Doe","category":"Web Dev","level":"Beginner","price":99,"seats_left":20},
@@ -19,6 +20,24 @@ class EnrollRequest(BaseModel):
     email: str = Field(..., min_length=5)
     payment_method: str = "card"
     coupon_code: str = ""
+    gift_enrollment: bool = False
+recipient_name: str = ""
+
+def find_course(course_id):
+    for course in courses:
+        if course["id"] == course_id:
+            return course
+    return None
+
+def calculate_enrollment_fee(price, seats_left, coupon_code):
+    fprice = price  
+    if seats_left > 5:
+        fprice = fprice * 0.9
+    if coupon_code == "STUDENT20":
+        fprice = fprice * 0.8
+    elif coupon_code == "FLAT500":
+        fprice = fprice - 500
+    return fprice
 
 @app.get("/")
 def home():
@@ -46,21 +65,31 @@ def get_course_summary():
 def test_enroll(data: EnrollRequest):
     return {"message": "ok"}
 
-def find_course(course_id):
-    for course in courses:
-        if course["id"] == course_id:
-            return course
-    return None
-
-def calculate_enrollment_fee(price, seats_left, coupon_code):
-    fprice = price  
-    if seats_left > 5:
-        fprice = fprice * 0.9
-    if coupon_code == "STUDENT20":
-        fprice = fprice * 0.8
-    elif coupon_code == "FLAT500":
-        fprice = fprice - 500
-    return fprice
+@app.post("/enrollments")
+def enroll(data: EnrollRequest):
+    global enrollment_counter
+    course = find_course(data.course_id)
+    if course is None:
+        raise HTTPException(status_code=404, detail="Course not found")
+    if course["seats_left"] <= 0:
+        raise HTTPException(status_code=400, detail="No seats available for this course")
+    final_fee = calculate_enrollment_fee(
+    course["price"],
+    course["seats_left"],
+    data.coupon_code
+    )
+    course["seats_left"] -= 1
+    record = {
+    "enrollment_id": enrollment_counter,
+    "student_name": data.student_name,
+    "course_title": course['title'],
+    "instructor": course['instructor'],
+    "original_price": course['price'],
+    "final_fee": final_fee
+    }
+    enrollments.append(record)
+    enrollment_counter += 1 
+    return {"message": "Enrollment successful", "enrollment": record}
 
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
