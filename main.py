@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from fastapi import HTTPException
 from fastapi import Query
+import math 
+
 app = FastAPI()
 courses=[
     {"id":1,"title":"Full Stack Web Development","instructor":"John Doe","category":"Web Dev","level":"Beginner","price":99,"seats_left":20},
@@ -375,6 +377,68 @@ def paginate_enrollments(page: int = 1, limit: int = 3):
         "total_pages": total_pages,
         "total_enrollments": total,
         "enrollments": data
+    }
+
+@app.get("/courses/browse")
+def browse_courses(
+    keyword: str = Query(None),
+    category: str = Query(None),
+    level: str = Query(None),
+    max_price: int = Query(None),
+    sort_by: str = Query("price"),
+    order: str = Query("asc"),
+    page: int = Query(1, gt=0),
+    limit: int = Query(3, gt=0)
+):
+
+    result = courses
+
+    if keyword is not None:
+        keyword = keyword.lower()
+        result = [
+            c for c in result
+            if keyword in c["title"].lower()
+            or keyword in c["instructor"].lower()
+            or keyword in c["category"].lower()
+        ]
+
+   
+    if category is not None:
+        result = [c for c in result if c["category"].lower() == category.lower()]
+
+    if level is not None:
+        result = [c for c in result if c["level"].lower() == level.lower()]
+
+    if max_price is not None:
+        result = [c for c in result if c["price"] <= max_price]
+
+    
+    valid_fields = ["price", "title", "seats_left"]
+
+    if sort_by not in valid_fields:
+        raise HTTPException(status_code=400, detail="Invalid sort field")
+
+    if order not in ["asc", "desc"]:
+        raise HTTPException(status_code=400, detail="Invalid order")
+
+    reverse = True if order == "desc" else False
+
+    result = sorted(result, key=lambda x: x[sort_by], reverse=reverse)
+
+    
+    total = len(result)
+    total_pages = math.ceil(total / limit)
+
+    start = (page - 1) * limit
+    end = start + limit
+
+    paginated = result[start:end]
+
+    return {
+        "total_results": total,
+        "total_pages": total_pages,
+        "current_page": page,
+        "courses": paginated
     }
 
 @app.get("/courses/{course_id}")
