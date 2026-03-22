@@ -210,6 +210,7 @@ def get_wishlist(student_name: str):
 @app.post("/wishlist/enroll-all")
 def enroll_all(data: WishlistEnrollRequest):
     global enrollment_counter
+    global wishlist
     student_items = [item for item in wishlist if item["student_name"] == data.student_name]
     if not student_items:
         raise HTTPException(status_code=404, detail="No wishlist items found for this student")
@@ -239,12 +240,42 @@ def enroll_all(data: WishlistEnrollRequest):
         enrolled.append(record)
         enrollment_counter += 1
         total_fee += final_fee
-    global wishlist
+    
     wishlist = [item for item in wishlist if item["student_name"] != data.student_name]
     return {
         "total_enrolled": len(enrolled),
         "total_fee": total_fee,
         "enrollments": enrolled
+    }
+
+@app.delete("/wishlist/remove/{course_id}")
+def remove_from_wishlist(course_id: int, student_name: str):
+
+    for item in wishlist:
+        if item["course_id"] == course_id and item["student_name"] == student_name:
+            wishlist.remove(item)
+            return {"message": "Course removed from wishlist"}
+
+    raise HTTPException(status_code=404, detail="Item not found in wishlist")
+
+@app.get("/courses/search")
+def search_courses(keyword: str = Query(...)):
+
+    keyword = keyword.lower()
+
+    results = []
+
+    for course in courses:
+        if (
+            keyword in course["title"].lower() or
+            keyword in course["instructor"].lower() or
+            keyword in course["category"].lower()
+        ):
+            results.append(course)
+
+    return {
+        "results": results,
+        "total_found": len(results)
     }
 
 @app.get("/courses/{course_id}")
