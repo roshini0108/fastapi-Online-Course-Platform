@@ -1,5 +1,4 @@
 from unicodedata import category
-
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from fastapi import HTTPException
@@ -25,6 +24,14 @@ class EnrollRequest(BaseModel):
     coupon_code: str = ""
     gift_enrollment: bool = False
     recipient_name: str = ""
+
+class NewCourse(BaseModel):
+    title: str = Field(..., min_length=2)
+    instructor: str = Field(..., min_length=2)
+    category: str = Field(..., min_length=2)
+    level: str = Field(..., min_length=2)
+    price: float = Field(..., ge=0)
+    seats_left: int = Field(..., gt=0)
 
 def find_course(course_id):
     for course in courses:
@@ -118,6 +125,16 @@ def filter_courses(
         else:
             filtered_courses = [course for course in filtered_courses if course["seats_left"] == 0]
     return {"filtered_courses": filtered_courses, "total": len(filtered_courses)}
+
+@app.post("/courses", status_code=201)
+def add_course(course: NewCourse):
+    for c in courses:
+        if c["title"].lower() == course.title.lower():
+            raise HTTPException(status_code=400, detail="Course with this title already exists")
+    new_course = course.dict()
+    new_course["id"] = max(c["id"] for c in courses) + 1 if courses else 1
+    courses.append(new_course)
+    return {"message": "Course added successfully", "course": new_course}
 
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
