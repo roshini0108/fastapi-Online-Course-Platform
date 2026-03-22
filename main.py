@@ -16,6 +16,8 @@ courses=[
 enrollments = []
 enrollment_counter = 1
 
+wishlist = []
+
 class EnrollRequest(BaseModel):
     student_name: str = Field(..., min_length=2)
     course_id: int = Field(..., gt=0)
@@ -159,8 +161,6 @@ def update_course(
 
     raise HTTPException(status_code=404, detail="Course not found")
 
-from fastapi import HTTPException
-
 @app.delete("/courses/{course_id}")
 def delete_course(course_id: int):
     for c in courses:
@@ -174,6 +174,34 @@ def delete_course(course_id: int):
             courses.remove(c)
             return {"message": "Course deleted successfully"}
     raise HTTPException(status_code=404, detail="Course not found")
+
+@app.post("/wishlist/add")
+def add_to_wishlist(student_name: str, course_id: int):
+    course = find_course(course_id)
+    if course is None:
+        raise HTTPException(status_code=404, detail="Course not found")
+    for w in wishlist:
+        if w["student_name"] == student_name and w["course_id"] == course_id:
+            raise HTTPException(status_code=400, detail="Course already in wishlist")
+    wishlist.append({
+        "student_name": student_name,
+        "course_id": course_id,
+        "course_title": course["title"]
+    })
+    return {"message": "Course added to wishlist"}
+
+@app.get("/wishlist")
+def get_wishlist(student_name: str):
+    filtered = [item for item in wishlist if item["student_name"] == student_name]
+    total_value = 0
+    for item in filtered:
+        course = find_course(item["course_id"])
+        if course:
+            total_value += course["price"]
+    return {
+        "wishlist": filtered,
+        "total_value": total_value
+    }
 
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
