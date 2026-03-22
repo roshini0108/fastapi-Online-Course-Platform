@@ -6,6 +6,7 @@ from fastapi import Query
 import math 
 
 app = FastAPI()
+# In-memory data storage
 courses=[
     {"id":1,"title":"Full Stack Web Development","instructor":"John Doe","category":"Web Dev","level":"Beginner","price":99,"seats_left":20},
     {"id":2,"title":"Backend APIs with FastAPI","instructor":"Jane Smith","category":"Web Dev","level":"Advanced","price":299,"seats_left":15},
@@ -19,7 +20,7 @@ enrollments = []
 enrollment_counter = 1
 
 wishlist = []
-
+#Q6 - Pydantic model for enroll request with validations and default values
 class EnrollRequest(BaseModel):
     student_name: str = Field(..., min_length=2)
     course_id: int = Field(..., gt=0)
@@ -41,6 +42,7 @@ class WishlistEnrollRequest(BaseModel):
     student_name: str
     payment_method: str
 
+#Q7 - Helper function to find course by ID
 def find_course(course_id):
     for course in courses:
         if course["id"] == course_id:
@@ -57,18 +59,22 @@ def calculate_enrollment_fee(price, seats_left, coupon_code):
         fprice = fprice - 500
     return fprice
 
+# Q1 — Home route
 @app.get("/")
 def home():
     return {"message": "Welcome to LearnHub Online Courses"}
 
+# Q2 — Get all courses
 @app.get("/courses")
 def get_courses():
-    return {"courses": courses, "total": len(courses), "total_seats_available": sum(course["seats_left"] for course in courses)}
+    return {"courses": courses}
 
+# Q4 — Get all enrollments
 @app.get("/enrollments")
 def get_enrollments():
     return {"enrollments": enrollments, "total": len(enrollments)}
 
+# Q5 — Course summary
 @app.get("/courses/summary")
 def get_course_summary():
     return {
@@ -79,10 +85,12 @@ def get_course_summary():
   "category_count": {category: len([course for course in courses if course["category"] == category]) for category in set(course["category"] for course in courses)}
 }
 
+# Q6 — Test enroll endpoint
 @app.post("/test-enroll")
 def test_enroll(data: EnrollRequest):
     return {"message": "ok"}
 
+#Q8 - Enroll  in a course with validations, discount , seat update
 @app.post("/enrollments")
 def enroll(data: EnrollRequest):
     global enrollment_counter
@@ -106,6 +114,7 @@ def enroll(data: EnrollRequest):
     "instructor": course['instructor'],
     "original_price": course['price'],
     "final_fee": final_fee,
+    #Q9- Include gift enrollment details in the record
     "gift_enrollment": data.gift_enrollment,
     "recipient_name": data.recipient_name if data.gift_enrollment else None
     }
@@ -113,6 +122,7 @@ def enroll(data: EnrollRequest):
     enrollment_counter += 1 
     return {"message": "Enrollment successful", "enrollment": record}
 
+#Q10 - Filter courses by category, level, price and seat availability
 @app.get("/courses/filter")
 def filter_courses(
     category: str = Query(None, description="Filter by course category"),
@@ -134,6 +144,7 @@ def filter_courses(
             filtered_courses = [course for course in filtered_courses if course["seats_left"] == 0]
     return {"filtered_courses": filtered_courses, "total": len(filtered_courses)}
 
+#Q11 - Add new course with validation and duplicate title check
 @app.post("/courses", status_code=201)
 def add_course(course: NewCourse):
     for c in courses:
@@ -144,6 +155,7 @@ def add_course(course: NewCourse):
     courses.append(new_course)
     return {"message": "Course added successfully", "course": new_course}
 
+#Q12 - Update course details with partial updates allowed
 @app.put("/courses/{course_id}")
 def update_course(
     course_id: int,
@@ -152,21 +164,17 @@ def update_course(
 ):
     for c in courses:
         if c["id"] == course_id:
-
-            # Update only provided fields
             if price is not None:
                 c["price"] = price
-
             if seats_left is not None:
                 c["seats_left"] = seats_left
-
             return {
                 "message": "Course updated successfully",
                 "course": c
             }
-
     raise HTTPException(status_code=404, detail="Course not found")
 
+#Q13 - Delete a course with enrollment check
 @app.delete("/courses/{course_id}")
 def delete_course(course_id: int):
     for c in courses:
@@ -181,6 +189,7 @@ def delete_course(course_id: int):
             return {"message": "Course deleted successfully"}
     raise HTTPException(status_code=404, detail="Course not found")
 
+#Q14 - Wishlist management with add, view, enroll and remove functionality
 @app.post("/wishlist/add")
 def add_to_wishlist(student_name: str, course_id: int):
     course = find_course(course_id)
@@ -209,6 +218,7 @@ def get_wishlist(student_name: str):
         "total_value": total_value
     }
 
+#Q15 - Enroll in all wishlist courses with validations and fee calculation
 @app.post("/wishlist/enroll-all")
 def enroll_all(data: WishlistEnrollRequest):
     global enrollment_counter
@@ -252,21 +262,17 @@ def enroll_all(data: WishlistEnrollRequest):
 
 @app.delete("/wishlist/remove/{course_id}")
 def remove_from_wishlist(course_id: int, student_name: str):
-
     for item in wishlist:
         if item["course_id"] == course_id and item["student_name"] == student_name:
             wishlist.remove(item)
             return {"message": "Course removed from wishlist"}
-
     raise HTTPException(status_code=404, detail="Item not found in wishlist")
 
+#Q16 - Search courses by keyword in title, instructor or category
 @app.get("/courses/search")
 def search_courses(keyword: str = Query(...)):
-
     keyword = keyword.lower()
-
     results = []
-
     for course in courses:
         if (
             keyword in course["title"].lower() or
@@ -274,104 +280,79 @@ def search_courses(keyword: str = Query(...)):
             keyword in course["category"].lower()
         ):
             results.append(course)
-
     return {
         "results": results,
         "total_found": len(results)
     }
 
-from fastapi import Query, HTTPException
-
+#Q17 - Sort courses by price, title or seats left with ascending or descending order
 @app.get("/courses/sort")
 def sort_courses(
     sort_by: str = Query("price"),
     order: str = Query("asc")
 ):
-
     valid_fields = ["price", "title", "seats_left"]
-
     if sort_by not in valid_fields:
         raise HTTPException(status_code=400, detail="Invalid sort field")
-
     if order not in ["asc", "desc"]:
         raise HTTPException(status_code=400, detail="Invalid order")
-
     reverse = True if order == "desc" else False
-
     sorted_courses = sorted(courses, key=lambda x: x[sort_by], reverse=reverse)
-
     return {
         "sorted_courses": sorted_courses,
         "sort_by": sort_by,
         "order": order
     }
 
-from fastapi import Query
-import math
-
+#Q18 - Paginate courses and enrollments with page number and limit
 @app.get("/courses/page")
 def paginate_courses(
     page: int = Query(1, gt=0),
     limit: int = Query(3, gt=0)
 ):
     total_courses = len(courses)
-
     total_pages = math.ceil(total_courses / limit)
-
     start = (page - 1) * limit
     end = start + limit
-
     paginated = courses[start:end]
-
     return {
         "current_page": page,
         "total_pages": total_pages,
         "total_courses": total_courses,
         "courses": paginated
     }
+
+#Q19 - Search enrollments by student name with case-insensitive matching
 @app.get("/enrollments/search")
 def search_enrollments(keyword: str):
-
     keyword = keyword.lower()
-
     results = [
         e for e in enrollments
         if keyword in e["student_name"].lower()
     ]
-
     return {
         "results": results,
         "total_found": len(results)
     }
-
+#Q19 - Sort enrollments by final fee with ascending or descending order
 @app.get("/enrollments/sort")
 def sort_enrollments(order: str = "asc"):
-
     if order not in ["asc", "desc"]:
         raise HTTPException(status_code=400, detail="Invalid order")
-
     reverse = True if order == "desc" else False
-
     sorted_data = sorted(enrollments, key=lambda x: x["final_fee"], reverse=reverse)
-
     return {
         "sorted_enrollments": sorted_data,
         "order": order
     }
-
-import math
-
+#Q19 - Paginate enrollments with page number and limit
 @app.get("/enrollments/page")
 def paginate_enrollments(page: int = 1, limit: int = 3):
-
     total = len(enrollments)
     total_pages = math.ceil(total / limit)
-
     start = (page - 1) * limit
     end = start + limit
-
     data = enrollments[start:end]
-
     return {
         "current_page": page,
         "total_pages": total_pages,
@@ -379,6 +360,7 @@ def paginate_enrollments(page: int = 1, limit: int = 3):
         "enrollments": data
     }
 
+#Q20 - Combine filtering, sorting and pagination for courses in a single endpoint
 @app.get("/courses/browse")
 def browse_courses(
     keyword: str = Query(None),
@@ -390,9 +372,7 @@ def browse_courses(
     page: int = Query(1, gt=0),
     limit: int = Query(3, gt=0)
 ):
-
     result = courses
-
     if keyword is not None:
         keyword = keyword.lower()
         result = [
@@ -400,40 +380,25 @@ def browse_courses(
             if keyword in c["title"].lower()
             or keyword in c["instructor"].lower()
             or keyword in c["category"].lower()
-        ]
-
-   
+        ]   
     if category is not None:
         result = [c for c in result if c["category"].lower() == category.lower()]
-
     if level is not None:
         result = [c for c in result if c["level"].lower() == level.lower()]
-
     if max_price is not None:
         result = [c for c in result if c["price"] <= max_price]
-
-    
     valid_fields = ["price", "title", "seats_left"]
-
     if sort_by not in valid_fields:
         raise HTTPException(status_code=400, detail="Invalid sort field")
-
     if order not in ["asc", "desc"]:
         raise HTTPException(status_code=400, detail="Invalid order")
-
     reverse = True if order == "desc" else False
-
     result = sorted(result, key=lambda x: x[sort_by], reverse=reverse)
-
-    
     total = len(result)
     total_pages = math.ceil(total / limit)
-
     start = (page - 1) * limit
     end = start + limit
-
     paginated = result[start:end]
-
     return {
         "total_results": total,
         "total_pages": total_pages,
@@ -441,6 +406,7 @@ def browse_courses(
         "courses": paginated
     }
 
+#Q3 - Get course details by ID with error handling
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
     for course in courses:
