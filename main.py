@@ -21,7 +21,7 @@ class EnrollRequest(BaseModel):
     payment_method: str = "card"
     coupon_code: str = ""
     gift_enrollment: bool = False
-recipient_name: str = ""
+    recipient_name: str = ""
 
 def find_course(course_id):
     for course in courses:
@@ -68,6 +68,8 @@ def test_enroll(data: EnrollRequest):
 @app.post("/enrollments")
 def enroll(data: EnrollRequest):
     global enrollment_counter
+    if data.gift_enrollment and data.recipient_name == "":
+        raise HTTPException(status_code=400, detail="Recipient name is required for gift enrollments")
     course = find_course(data.course_id)
     if course is None:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -85,7 +87,9 @@ def enroll(data: EnrollRequest):
     "course_title": course['title'],
     "instructor": course['instructor'],
     "original_price": course['price'],
-    "final_fee": final_fee
+    "final_fee": final_fee,
+    "gift_enrollment": data.gift_enrollment,
+    "recipient_name": data.recipient_name if data.gift_enrollment else None
     }
     enrollments.append(record)
     enrollment_counter += 1 
