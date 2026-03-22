@@ -35,6 +35,10 @@ class NewCourse(BaseModel):
     price: float = Field(..., ge=0)
     seats_left: int = Field(..., gt=0)
 
+class WishlistEnrollRequest(BaseModel):
+    student_name: str
+    payment_method: str
+
 def find_course(course_id):
     for course in courses:
         if course["id"] == course_id:
@@ -201,6 +205,46 @@ def get_wishlist(student_name: str):
     return {
         "wishlist": filtered,
         "total_value": total_value
+    }
+
+@app.post("/wishlist/enroll-all")
+def enroll_all(data: WishlistEnrollRequest):
+    global enrollment_counter
+    student_items = [item for item in wishlist if item["student_name"] == data.student_name]
+    if not student_items:
+        raise HTTPException(status_code=404, detail="No wishlist items found for this student")
+    enrolled = []
+    total_fee = 0
+    for item in student_items:
+        course = find_course(item["course_id"])
+        if course is None:
+            continue
+        if course["seats_left"] <= 0:
+            continue
+        final_fee = calculate_enrollment_fee(
+            course["price"],
+            course["seats_left"],
+            ""   
+        )
+        course["seats_left"] -= 1
+        record = {
+            "enrollment_id": enrollment_counter,
+            "student_name": data.student_name,
+            "course_title": course["title"],
+            "instructor": course["instructor"],
+            "original_price": course["price"],
+            "final_fee": final_fee
+        }
+        enrollments.append(record)
+        enrolled.append(record)
+        enrollment_counter += 1
+        total_fee += final_fee
+    global wishlist
+    wishlist = [item for item in wishlist if item["student_name"] != data.student_name]
+    return {
+        "total_enrolled": len(enrolled),
+        "total_fee": total_fee,
+        "enrollments": enrolled
     }
 
 @app.get("/courses/{course_id}")
