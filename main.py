@@ -159,6 +159,22 @@ def update_course(
 
     raise HTTPException(status_code=404, detail="Course not found")
 
+from fastapi import HTTPException
+
+@app.delete("/courses/{course_id}")
+def delete_course(course_id: int):
+    for c in courses:
+        if c["id"] == course_id:
+            for e in enrollments:
+                if e["course_title"] == c["title"]:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Cannot delete course with active enrollments"
+                    )
+            courses.remove(c)
+            return {"message": "Course deleted successfully"}
+    raise HTTPException(status_code=404, detail="Course not found")
+
 @app.get("/courses/{course_id}")
 def get_course(course_id: int):
     for course in courses:
