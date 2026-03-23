@@ -109,7 +109,7 @@ All API outputs are included in the `screenshots/` folder.
 
 ```bash
 # Clone repo
-git clone <your-repo-link>
+git clone https://github.com/roshini0108/fastapi-Online-Course-Platform
 
 # Move into project
 cd project-folder
